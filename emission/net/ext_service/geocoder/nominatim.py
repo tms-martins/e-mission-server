@@ -25,11 +25,13 @@ try:
 except:
     print("nominatim not configured either, place decoding must happen on the client")
 
+used_nominatim_already = False
+
 class Geocoder(object):
 
     def __init__(self):
         pass
-        
+
     @classmethod
     def make_url_geo(cls, address):
         params = {
@@ -45,6 +47,13 @@ class Geocoder(object):
 
     @classmethod
     def get_json_geo(cls, address):
+        global used_nominatim_already
+        if used_nominatim_already:
+            print("TIAGO: nominatim.py:get_json_geo used nominatim already, skipping")
+            return
+        else:
+            print("TIAGO: nominatim.py:get_json_geo first use of nominatim")
+            used_nominatim_already = True
         request = urllib.request.Request(cls.make_url_geo(address))
         response = urllib.request.urlopen(request)
         jsn = json.loads(response.read())
@@ -65,24 +74,44 @@ class Geocoder(object):
     @classmethod
     def make_url_reverse(cls, lat, lon):
         params = {
-            "lat" : lat, 
+            "lat" : lat,
             "lon" : lon,
             "format" : "json"
         }
-
+        print("TIAGO: nominatim.py:make_url_reverse start")
         query_url = NOMINATIM_QUERY_URL + "/reverse?"
+        print("TIAGO: nominatim.py:make_url_reverse query_url %s" % query_url)
         encoded_params = urllib.parse.urlencode(params)
         url = query_url + encoded_params
-        logging.debug("For reverse geocoding, using URL %s" % url)
+        print("For reverse geocoding, using URL %s" % url)
         return url
 
     @classmethod
     def get_json_reverse(cls, lat, lng):
-        request = urllib.request.Request(cls.make_url_reverse(lat, lng))
-        response = urllib.request.urlopen(request)
-        parsed_response = json.loads(response.read())
-        logging.debug("parsed_response = %s" % parsed_response)
+        parsed_response = json.loads('{"place_id":137488079,"licence":"Data © OpenStreetMap contributors, ODbL 1.0. https://osm.org/copyright","osm_type":"way","osm_id":257530977,"lat":"37.38825945","lon":"-122.087611868098","display_name":"775, South Shoreline Boulevard, Mountain View, Santa Clara County, Kalifornien, 94040, Vereinigte Staaten von Amerika","address":{"house_number":"775","road":"South Shoreline Boulevard","city":"Mountain View","county":"Santa Clara County","state":"Kalifornien","postcode":"94040","country":"Vereinigte Staaten von Amerika","country_code":"us"},"boundingbox":["37.3881323","37.3883631","-122.087766","-122.0873533"]}')
+        #logging.debug("parsed_response = %s" % parsed_response)
+        #print("parsed_response = %s" % parsed_response)
         return parsed_response
+
+        # global used_nominatim_already
+        # logging.debug("TIAGO: nominatim.py:get_json_reverse start")
+        # #print("TIAGO: nominatim.py:get_json_reverse start... used_nominatim_already %s" % used_nominatim_already)
+        # if used_nominatim_already == True:
+        #     used_nominatim_already = True
+        #     print("TIAGO: nominatim.py:get_json_reverse used nominatim already, skipping")
+        #     return
+        # else:
+        #     used_nominatim_already = True
+        #     print("TIAGO: nominatim.py:get_json_reverse first use of nominatim")
+        # print("TIAGO: nominatim.py:get_json_reverse getting request")
+        # request = urllib.request.Request(cls.make_url_reverse(lat, lng))
+        # print("TIAGO: nominatim.py:get_json_reverse getting response")
+        # response = urllib.request.urlopen(request)
+        # print("TIAGO: nominatim.py:get_json_reverse parsing response")
+        # parsed_response = json.loads(response.read())
+        # #logging.debug("parsed_response = %s" % parsed_response)
+        # print("parsed_response = %s" % parsed_response)
+        # return parsed_response
 
     @classmethod
     def reverse_geocode(cls, lat, lng):

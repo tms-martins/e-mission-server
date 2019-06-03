@@ -102,7 +102,7 @@ def save_cleaned_segments_for_ts(user_id, start_ts, end_ts):
     # For really old users who have data stored in the old format, or for
     # really new users who have no data yet, we may have no data in the
     # timeline, and no start place. If we don't have this check, we continue
-    # trying to process the information for this user and end up with 
+    # trying to process the information for this user and end up with
     # `raw_place = None` in `create_and_link_timeline`
     if tl.is_empty():
         logging.info("Raw timeline is empty, early return")
@@ -138,7 +138,7 @@ def save_cleaned_segments_for_timeline(user_id, tl):
     # We have updated the first place entry in the filtered_tl, but everything
     # else is new and needs to be inserted
     if last_cleaned_place is not None:
-        logging.debug("last cleaned_place %s was already in database, updating..." % 
+        logging.debug("last cleaned_place %s was already in database, updating..." %
             last_cleaned_place)
         ts.update(last_cleaned_place)
     if filtered_tl is not None and not filtered_tl.is_empty():
@@ -188,7 +188,7 @@ def get_filtered_trip(ts, trip):
         section_map[section.get_id()] = filtered_section_entry
         point_map[section.get_id()] = point_list
 
-    # Handle the stops first because changing the ends of the section has 
+    # Handle the stops first because changing the ends of the section has
     # implications for all the manipulations on the section
     stop_map = {}
     for stop in trip_tl.places:
@@ -246,11 +246,15 @@ def get_filtered_place(raw_place):
     filtered_place_data.raw_places = []
     filtered_place_data.append_raw_place(raw_place.get_id())
 
+    #logging.info("TIAGO: this happened 112234")
     try:
         reverse_geocoded_json = eco.Geocoder.get_json_reverse(filtered_place_data.location.coordinates[1],
                                                               filtered_place_data.location.coordinates[0])
         if reverse_geocoded_json is not None:
             filtered_place_data.display_name = format_result(reverse_geocoded_json)
+            print("TIAGO: country code %s" % get_country_code(reverse_geocoded_json))
+            filtered_place_data.country_code = get_country_code(reverse_geocoded_json)
+            print("TIAGO: filtered_place_data %s" % filtered_place_data)
     except KeyError as e:
         logging.info("nominatim result does not have an address, skipping")
         logging.info(e)
@@ -442,7 +446,7 @@ def get_filtered_points(section, filtered_section_data):
     logging.debug("with_speeds_df = %s" %
                   with_speeds_df[["idx", "ts", "fmt_time", "longitude", "latitude"]].head())
     with_speeds_df_nona = with_speeds_df.dropna()
-    logging.info("removed %d entries containing n/a" % 
+    logging.info("removed %d entries containing n/a" %
         (len(with_speeds_df_nona) - len(with_speeds_df)))
     logging.debug("get_filtered_points(%s points) = %s points" %
                   (len(loc_entry_list), len(with_speeds_df_nona)))
@@ -500,7 +504,7 @@ def get_overriden_mode(raw_section_data, filtered_section_data, with_speeds_df):
     end_to_end_time = filtered_section_data.duration
 
     if (end_to_end_distance == 0) or (end_to_end_time == 0):
-        logging.info("distance = time = 0 for section in trip (raw: %s, cleaned %s), returning None" % 
+        logging.info("distance = time = 0 for section in trip (raw: %s, cleaned %s), returning None" %
         (raw_section_data.trip_id, filtered_section_data.trip_id))
         return None
 
@@ -517,13 +521,13 @@ def get_overriden_mode(raw_section_data, filtered_section_data, with_speeds_df):
     # https://github.com/e-mission/e-mission-server/issues/407#issuecomment-248524098
     if raw_section_data.sensed_mode == ecwm.MotionTypes.ON_FOOT:
         if end_to_end_distance > 10 * 1000 and overall_speed > TEN_KMPH:
-            logging.info("Sanity checking failed for ON_FOOT section from trip (raw: %s, filtered %s), returning UNKNOWN" % 
+            logging.info("Sanity checking failed for ON_FOOT section from trip (raw: %s, filtered %s), returning UNKNOWN" %
                 (raw_section_data.trip_id, filtered_section_data.trip_id))
             return ecwm.MotionTypes.UNKNOWN
 
     if raw_section_data.sensed_mode == ecwm.MotionTypes.BICYCLING:
         if end_to_end_distance > 100 * 1000 and overall_speed > TWENTY_KMPH:
-            logging.info("Sanity checking failed for BICYCLING section from trip (raw: %s, filtered %s), returning UNKNOWN" % 
+            logging.info("Sanity checking failed for BICYCLING section from trip (raw: %s, filtered %s), returning UNKNOWN" %
                 (raw_section_data.trip_id, filtered_section_data.trip_id))
             return ecwm.MotionTypes.UNKNOWN
 
@@ -627,7 +631,7 @@ def _add_start_point(filtered_loc_df, raw_start_place, ts, sensed_mode):
                 ts.get_entry_from_id(esda.RAW_TRIP_KEY,
                                      raw_start_place.data.ending_trip))
             if ending_trip_entry is None or ending_trip_entry.metadata.key != "segmentation/raw_untracked":
-                logging.debug("place %s has zero duration but is after %s!" % 
+                logging.debug("place %s has zero duration but is after %s!" %
                              (raw_start_place.get_id(), ending_trip_entry))
                 assert False
             else:
@@ -814,12 +818,12 @@ def _fill_stop(old_stop, new_stop, section_map):
     STOP_DISTANCE_THRESHOLD = max(eac.get_config()["section.startStopRadius"],
         eac.get_config()["section.endStopRadius"])
     if stop_data.distance > STOP_DISTANCE_THRESHOLD:
-        logging.debug("stop distance = %d > %d, squishing it between %s -> %s and %s -> %s" % 
+        logging.debug("stop distance = %d > %d, squishing it between %s -> %s and %s -> %s" %
             (stop_data.distance, STOP_DISTANCE_THRESHOLD,
              new_ending_section.data.start_fmt_time, new_ending_section.data.end_fmt_time,
              new_starting_section.data.start_fmt_time, new_starting_section.data.end_fmt_time))
         squish_stop(stop_data, new_ending_section, new_starting_section)
-        logging.debug("after squish_stop, sequence is section %s -> %s, section %s -> %s, and %s -> %s" % 
+        logging.debug("after squish_stop, sequence is section %s -> %s, section %s -> %s, and %s -> %s" %
             (new_ending_section.data.start_fmt_time, new_ending_section.data.end_fmt_time,
              stop_data.enter_fmt_time, stop_data.exit_fmt_time,
              new_starting_section.data.start_fmt_time, new_starting_section.data.end_fmt_time))
@@ -881,12 +885,12 @@ def squish_stop(filtered_stop_data, new_ending_section, new_starting_section):
                          prev_section_space_density, next_section_space_density,
                          prev_section_time_density, next_section_time_density))
 
-            logging.debug("prev_section %s is more dense than next_section %s, merging backwards" % 
+            logging.debug("prev_section %s is more dense than next_section %s, merging backwards" %
                 (new_ending_section.data.end_fmt_time, new_starting_section.data.start_fmt_time))
             _merge_backward(filtered_stop_data, new_ending_section, new_starting_section,
                 dist_diff, ts_diff)
         else:
-            logging.debug("next_section %s is more dense than prev_section %s, merging forwards" % 
+            logging.debug("next_section %s is more dense than prev_section %s, merging forwards" %
                 (new_ending_section.data.end_fmt_time, new_starting_section.data.start_fmt_time))
             _merge_forward(filtered_stop_data, new_ending_section, new_starting_section,
                 dist_diff, ts_diff)
@@ -903,7 +907,7 @@ def _merge_backward(filtered_stop_data, new_ending_section, new_starting_section
     _copy_prefixed_fields(filtered_stop_data, "exit", filtered_stop_data, "enter")
 
     # Then, the next section's start should be overwritten with this stop's
-    # information (since enter now = exit, which set of fields is a don't care) 
+    # information (since enter now = exit, which set of fields is a don't care)
     _copy_prefixed_fields(new_starting_section["data"], "start", filtered_stop_data, "enter")
     _extend_section_by_point(new_starting_section, dist_diff, ts_diff)
     logging.debug("after backward merge, next section is %s" % new_starting_section.data.start_fmt_time)
@@ -914,7 +918,7 @@ def _merge_forward(filtered_stop_data, new_ending_section, new_starting_section,
     # So the enter should be overwritten with the exit
     _copy_prefixed_fields(filtered_stop_data, "enter", filtered_stop_data, "exit")
     # Then, the previous section's end should be overwritten with this stop's
-    # information (since enter now = exit, which set of fields is a don't care) 
+    # information (since enter now = exit, which set of fields is a don't care)
     _copy_prefixed_fields(new_ending_section["data"], "end", filtered_stop_data, "exit")
     _extend_section_by_point(new_starting_section, dist_diff, ts_diff)
     logging.debug("after forward merge, prev section is %s" % new_ending_section.data.end_fmt_time)
@@ -1026,7 +1030,7 @@ def link_trip_start(ts, cleaned_trip, cleaned_start_place, raw_start_place):
            cleaned_start_place_data.duration = cleaned_start_place_data.exit_ts - \
                                             cleaned_start_place_data.enter_ts
     else:
-           logging.debug("enter_ts = %s, exit_ts = %s, unknown duration" % 
+           logging.debug("enter_ts = %s, exit_ts = %s, unknown duration" %
         (cleaned_start_place_data.enter_ts, cleaned_start_place_data.exit_ts))
 
     # Appended while creating the start place, or while handling squished
@@ -1143,19 +1147,19 @@ def _fix_squished_place_mismatch(user_id, trip_id, ts, cleaned_trip_data, cleane
     # Validate the distance and speed calculations. Can remove this after validation
     loc_df = esda.get_data_df(esda.CLEANED_LOCATION_KEY, user_id,
                               esda.get_time_query_for_trip_like(esda.CLEANED_SECTION_KEY, first_section.get_id()))
-    logging.debug("fix_squished_place: before recomputing for validation, loc_df = %s" % 
+    logging.debug("fix_squished_place: before recomputing for validation, loc_df = %s" %
         (loc_df[["_id", "ts", "fmt_time", "latitude", "longitude", "distance", "speed"]]).head())
     related_sections = loc_df.section.unique().tolist()
     if len(related_sections) > 1:
-        logging.debug("Found %d sections, need to remove the uncommon ones..." % 
+        logging.debug("Found %d sections, need to remove the uncommon ones..." %
             len(related_sections))
-        
+
         section_counts = [np.count_nonzero(loc_df.section == s) for s in related_sections]
         logging.debug("section counts = %s" % list(zip(related_sections, section_counts)))
         # This code should work even if this assert is removed
         # but this is the expectation we have based on the use cases we have seen so far
         assert(min(section_counts) == 1)
-       
+
         # the most common section is the one at the same index as the max
         # count. This is the valid section
         valid_section = related_sections[np.argmax(section_counts)]
@@ -1164,28 +1168,28 @@ def _fix_squished_place_mismatch(user_id, trip_id, ts, cleaned_trip_data, cleane
         index_for_invalid_sections = loc_df[loc_df.section != valid_section].index
         logging.debug("index_for_invalid_sections = %s" % index_for_invalid_sections)
 
-        logging.debug("Before dropping, with_speeds_df.tail = %s" % 
+        logging.debug("Before dropping, with_speeds_df.tail = %s" %
             (loc_df[["_id", "section", "ts", "fmt_time", "latitude", "longitude", "speed"]]).tail())
 
         loc_df.drop(index_for_invalid_sections, inplace=True)
         # If we don't this, the dropped entry is still present with all
-        # entries = NaN, the result after recomputing is 
+        # entries = NaN, the result after recomputing is
         # 30  5a40a632f6858f5e3b27307b  1.452972e+09  2016-01-16T11:17:28.072312-08:00
         loc_df.reset_index(drop=True, inplace=True)
-        logging.debug("After dropping, with_speeds_df.tail = %s" % 
+        logging.debug("After dropping, with_speeds_df.tail = %s" %
             (loc_df[["_id", "section", "ts", "fmt_time", "latitude", "longitude", "speed"]]).tail())
 
         # validate that we only have valid sections now
-        logging.debug("About to validate that we have only one valid section %s" % 
+        logging.debug("About to validate that we have only one valid section %s" %
             loc_df.section.unique())
         assert(len(loc_df.section.unique().tolist()) == 1)
 
     loc_df.rename(columns={"speed": "from_points_speed", "distance": "from_points_distance"}, inplace=True)
     with_speeds_df = eaicl.add_dist_heading_speed(loc_df)
-    logging.debug("fix_squished_place: after recomputing for validation, with_speeds_df.head = %s" % 
+    logging.debug("fix_squished_place: after recomputing for validation, with_speeds_df.head = %s" %
         (with_speeds_df[["_id", "ts", "fmt_time", "latitude", "longitude", "distance", "speed", "from_points_speed"]]).head())
 
-    logging.debug("fix_squished_place: after recomputing for validation, with_speeds_df.tail = %s" % 
+    logging.debug("fix_squished_place: after recomputing for validation, with_speeds_df.tail = %s" %
         (with_speeds_df[["_id", "ts", "fmt_time", "latitude", "longitude", "distance", "speed", "from_points_speed"]]).tail())
 
 
@@ -1256,6 +1260,10 @@ def format_result(rev_geo_result):
     get_coarse = lambda rgr: get_with_fallbacks(rgr["address"], ["city", "town", "county"])
     name = "%s, %s" % (get_fine(rev_geo_result), get_coarse(rev_geo_result))
     return name
+
+def get_country_code(rev_geo_result):
+    country_code = rev_geo_result["address"]["country_code"]
+    return country_code
 
 def get_with_fallbacks(json, fallback_key_list):
     for key in fallback_key_list:
